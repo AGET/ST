@@ -12,6 +12,7 @@ import com.aldo.aget.simuladortracker.Control.Ext;
 import com.aldo.aget.simuladortracker.Control.ManagerDB;
 import com.aldo.aget.simuladortracker.Control.SQLHelper;
 import com.aldo.aget.simuladortracker.MainActivity;
+import com.aldo.aget.simuladortracker.Service.ServicioTrack;
 import com.aldo.aget.simuladortracker.Ubicacion;
 
 /**
@@ -22,9 +23,12 @@ public class SMSReceiver extends BroadcastReceiver {
     public static final String TAGLOG = "AGET";
 
     Context contexto;
+    public static Ubicacion ubicacion;
 
     private static String numero = "";
     private static String mensaje = "";
+
+    Intent intentServicio;
 
     @Override
     public void onReceive(Context context, Intent intent) {
@@ -71,6 +75,8 @@ public class SMSReceiver extends BroadcastReceiver {
 
             parse();
         } // end if bundle != null
+
+       intentServicio =  new Intent(contexto, ServicioTrack.class);
     }
 
     private void parse() {
@@ -79,115 +85,187 @@ public class SMSReceiver extends BroadcastReceiver {
         boolean restriccion = false;
         numberuser = db.numberUser("usuarios", new String[]{"numero"});
 
-        if (mensaje.equalsIgnoreCase("begin123456")) {
 
-            db.eliminarTodo(SQLHelper.TABLA_USUARIOS);
-            db.eliminarTodo(SQLHelper.TABLA_AUTOTRACK);
+        try {
 
-            MainActivity.adapter.notifyDataSetChanged();
-            MainActivity.lista.setAdapter(MainActivity.adapter);
+            if (mensaje.equalsIgnoreCase("begin123456")) {
 
-        } else if (numberuser == 0) {
-
-            if (mensaje.substring(0, 11).equalsIgnoreCase("admin123456")) {
-
-                numero = mensaje.trim().replace(" ", "").substring(11);
-                db.insertar(SQLHelper.TABLA_USUARIOS, SQLHelper.COLUMNA_USUARIO_NUMERO, numero);
-
-                MainActivity.adapter.notifyDataSetChanged();
-                MainActivity.lista.setAdapter(MainActivity.adapter);
-
-            } else if (mensaje.substring(0, 3).trim().equalsIgnoreCase("fix")) {
-
-                long milisegundos = 0;
-
-                if (!db.autotrakEstablecido())
-                    db.insertar(SQLHelper.TABLA_AUTOTRACK, SQLHelper.COLUMNA_COMANDO, mensaje);
-                else {
-                    db.eliminarTodo(SQLHelper.TABLA_AUTOTRACK);
-                    db.insertar(SQLHelper.TABLA_AUTOTRACK, SQLHelper.COLUMNA_COMANDO, mensaje);
-                }
-                String[] dataAutoTrack = obtenerDatosAutotrack(mensaje);
-
-                if(dataAutoTrack != null) {
-
-                    int numeroDeUbicacion = Integer.parseInt(dataAutoTrack[2]);
-                    int tipoTiempo = 0;
-
-                    switch (dataAutoTrack[1]) {
-                        case "s":
-                            tipoTiempo = Integer.parseInt(dataAutoTrack[1]);
-                            milisegundos = (tipoTiempo / numeroDeUbicacion) * 1000;
-                            break;
-                        case "m":
-                            tipoTiempo = Integer.parseInt(dataAutoTrack[1]);
-                            milisegundos = ((tipoTiempo * 60) / numeroDeUbicacion) * 1000;
-                            break;
-                        case "h":
-                            tipoTiempo = Integer.parseInt(dataAutoTrack[1]);
-                            milisegundos = ((tipoTiempo * 3600) / numeroDeUbicacion) * 1000;
-                            break;
-                    }
-                    Ubicacion ub = new Ubicacion(contexto, numero, true, milisegundos);
-                    MainActivity.comando.setText(mensaje);
-                }else{
-                    Toast.makeText(contexto, "problema con el comando, verifique que sea superior " +
-                            "a 30 seg.", Toast.LENGTH_SHORT).show();
-                }
-            } else if (mensaje.trim().equalsIgnoreCase("nofix")) {
+                db.eliminarTodo(SQLHelper.TABLA_USUARIOS);
                 db.eliminarTodo(SQLHelper.TABLA_AUTOTRACK);
 
-                MainActivity.comando.setText(mensaje);
-            }
+            } else if (numberuser == 0) {
 
-        } else if (numberuser > 0) {
-            if (db.existe(numero)) {
-                if (mensaje.substring(0, 11).equalsIgnoreCase("admin123456")) {
-                    if (numberuser < 6) {
-                        numero = mensaje.trim().replace(" ", "").substring(11);
-                        db.insertar(SQLHelper.TABLA_USUARIOS, SQLHelper.COLUMNA_USUARIO_NUMERO, numero);
+                if (mensaje.trim().substring(0,5).equalsIgnoreCase("nofix")) {
+                    Log.d(TAGLOG,"se elimino");
+                    db.eliminarTodo(SQLHelper.TABLA_AUTOTRACK);
+                    Log.d(TAGLOG,"se elimino");
 
-                        MainActivity.adapter.notifyDataSetChanged();
-                        MainActivity.lista.setAdapter(MainActivity.adapter);
+                    contexto.stopService(intentServicio);
 
-                    } else {
-                        Log.d(Ext.TAGLOG, "no admin");
+                    Toast.makeText(contexto, "Sin auto localizacion", Toast.LENGTH_SHORT).show();
+                    if(MainActivity.comando != null) {
+                        MainActivity.comando.setText("Sin instrucicon de autorrastreo");
                     }
-                } else if (mensaje.substring(0, 13).equalsIgnoreCase("noadmin123456")) {
-                    numero = mensaje.trim().replace(" ", "").substring(13);
-                    db.eliminarDato(SQLHelper.TABLA_USUARIOS, SQLHelper.COLUMNA_USUARIO_NUMERO, numero);
 
-                    MainActivity.adapter.notifyDataSetChanged();
-                    MainActivity.lista.setAdapter(MainActivity.adapter);
+                } else if (mensaje.substring(0, 11).equalsIgnoreCase("admin123456")) {
+
+                    numero = mensaje.trim().replace(" ", "").substring(11);
+                    db.insertar(SQLHelper.TABLA_USUARIOS, SQLHelper.COLUMNA_USUARIO_NUMERO, numero);
 
                 } else if (mensaje.substring(0, 3).trim().equalsIgnoreCase("fix")) {
 
-                    String tiempo, tipoTiempo, cantidad, constanteCantidad, pass;
-                    mensaje = mensaje.trim().replace(" ", "");
-                    tiempo = mensaje.substring(3, 6);
-                    tipoTiempo = mensaje.substring(6, 7);
-                    cantidad = mensaje.substring(7, 10);
-                    constanteCantidad = mensaje.substring(10, 11);
-                    pass = mensaje.substring(11);
+                    long milisegundos = 0;
 
-                    if (!db.autotrakEstablecido())
-                        db.insertar(SQLHelper.TABLA_AUTOTRACK, SQLHelper.COLUMNA_COMANDO, mensaje);
-                    else {
+                    if (!db.autotrakEstablecido()) {
+                        db.insercionMultiple(SQLHelper.TABLA_AUTOTRACK, new String[]{SQLHelper.COLUMNA_COMANDO,
+                                SQLHelper.COLUMNA_NUMERO} , new String[]{mensaje,numero});
+                    } else {
                         db.eliminarTodo(SQLHelper.TABLA_AUTOTRACK);
-                        db.insertar(SQLHelper.TABLA_AUTOTRACK, SQLHelper.COLUMNA_COMANDO, mensaje);
+                        db.insercionMultiple(SQLHelper.TABLA_AUTOTRACK, new String[]{SQLHelper.COLUMNA_COMANDO,
+                                SQLHelper.COLUMNA_NUMERO} , new String[]{mensaje,numero});
                     }
+                    String[] dataAutoTrack = obtenerDatosAutotrack(mensaje);
 
-                    MainActivity.comando.setText(mensaje);
+                    if (dataAutoTrack != null) {
 
-                } else if (mensaje.trim().equalsIgnoreCase("nofix")) {
+                        int numeroDeUbicacion = Integer.parseInt(dataAutoTrack[2]);
+                        int tipoTiempo = 0;
 
-                    db.eliminarTodo(SQLHelper.TABLA_AUTOTRACK);
+                        switch (dataAutoTrack[1]) {
+                            case "s":
+                                tipoTiempo = Integer.parseInt(dataAutoTrack[0]);
+                                milisegundos = (tipoTiempo / numeroDeUbicacion) * 1000;
+                                break;
+                            case "m":
+                                tipoTiempo = Integer.parseInt(dataAutoTrack[0]);
+                                milisegundos = ((tipoTiempo * 60) / numeroDeUbicacion) * 1000;
+                                break;
+                            case "h":
+                                tipoTiempo = Integer.parseInt(dataAutoTrack[0]);
+                                milisegundos = ((tipoTiempo * 3600) / numeroDeUbicacion) * 1000;
+                                break;
+                        }
 
-                    MainActivity.comando.setText(mensaje);
+//                        Intent intent = new Intent(contexto, ServicioTrack.class);
+                        intentServicio.putExtra(Ext.NUMERO,numero);
+                        intentServicio.putExtra(Ext.AUTOMATICO,true);
+                        intentServicio.putExtra(Ext.MILISEGUNDOS,milisegundos);
+                        contexto.startService(intentServicio);
+//                        ubicacion = new Ubicacion(contexto, numero, true, milisegundos);
+
+                        Log.v("AGET","se establecio el servicio");
+                        Toast.makeText(contexto, "auto localizacion establecida", Toast.LENGTH_SHORT).show();
+
+                        if( MainActivity.comando != null){
+                            MainActivity.comando.setText("Instruccion: " + mensaje + " Numero: " + numero);
+                        }
+
+                    } else {
+                        Toast.makeText(contexto, "problema con el comando, verifique que sea superior " +
+                                "a 30 seg.", Toast.LENGTH_SHORT).show();
+                    }
                 }
-            } else {
-                Log.d(Ext.TAGLOG, "denied");
+
+            } else if (numberuser > 0) {
+                if (db.existe(numero)) {
+                    if (mensaje.substring(0, 11).equalsIgnoreCase("admin123456")) {
+                        if (numberuser < 6) {
+                            numero = mensaje.trim().replace(" ", "").substring(11);
+                            db.insertar(SQLHelper.TABLA_USUARIOS, SQLHelper.COLUMNA_USUARIO_NUMERO, numero);
+
+                            if(MainActivity.lista != null) {
+                                MainActivity.adapter.notifyDataSetChanged();
+                                MainActivity.lista.setAdapter(MainActivity.adapter);
+                            }
+
+                        } else {
+                            Log.d(Ext.TAGLOG, "no admin");
+                        }
+                    } else if (mensaje.substring(0, 13).equalsIgnoreCase("noadmin123456")) {
+                        numero = mensaje.trim().replace(" ", "").substring(13);
+                        db.eliminarDato(SQLHelper.TABLA_USUARIOS, SQLHelper.COLUMNA_USUARIO_NUMERO, numero);
+
+                        if (MainActivity.lista != null) {
+                            MainActivity.adapter.notifyDataSetChanged();
+                            MainActivity.lista.setAdapter(MainActivity.adapter);
+                        }
+
+                    } else if (mensaje.substring(0, 3).trim().equalsIgnoreCase("fix")) {
+
+                        long milisegundos = 0;
+
+                        if (!db.autotrakEstablecido()) {
+                            db.insercionMultiple(SQLHelper.TABLA_AUTOTRACK, new String[]{SQLHelper.COLUMNA_COMANDO,
+                                    SQLHelper.COLUMNA_NUMERO} , new String[]{mensaje,numero});
+                        } else {
+                            db.eliminarTodo(SQLHelper.TABLA_AUTOTRACK);
+                            db.insercionMultiple(SQLHelper.TABLA_AUTOTRACK, new String[]{SQLHelper.COLUMNA_COMANDO,
+                                    SQLHelper.COLUMNA_NUMERO} , new String[]{mensaje,numero});
+                        }
+
+                        String[] dataAutoTrack = obtenerDatosAutotrack(mensaje);
+
+                        if (dataAutoTrack != null) {
+
+                            int numeroDeUbicacion = Integer.parseInt(dataAutoTrack[2]);
+                            int tipoTiempo = 0;
+
+                            switch (dataAutoTrack[1]) {
+                                case "s":
+                                    tipoTiempo = Integer.parseInt(dataAutoTrack[0]);
+                                    milisegundos = (tipoTiempo / numeroDeUbicacion) * 1000;
+                                    break;
+                                case "m":
+                                    tipoTiempo = Integer.parseInt(dataAutoTrack[0]);
+                                    milisegundos = ((tipoTiempo * 60) / numeroDeUbicacion) * 1000;
+                                    break;
+                                case "h":
+                                    tipoTiempo = Integer.parseInt(dataAutoTrack[0]);
+                                    milisegundos = ((tipoTiempo * 3600) / numeroDeUbicacion) * 1000;
+                                    break;
+                            }
+                        }
+                        Toast.makeText(contexto, "auto localizacion establecida", Toast.LENGTH_SHORT).show();
+                        Log.v(TAGLOG,"auto localizacion establecida");
+
+//                        Intent intent = new Intent(contexto, ServicioTrack.class);
+//                        intent.putExtra(Ext.NUMERO,numero);numero
+//                        intent.putExtra(Ext.AUTOMATICO,true);
+//                        intent.putExtra(Ext.MILISEGUNDOS,milisegundos);
+
+//                        contexto.startService(intent);
+
+                        intentServicio.putExtra(Ext.NUMERO,numero);
+                        intentServicio.putExtra(Ext.AUTOMATICO,true);
+                        intentServicio.putExtra(Ext.MILISEGUNDOS,milisegundos);
+                        contexto.startService(intentServicio);
+
+                        Toast.makeText(contexto, "Servicio iniciado", Toast.LENGTH_SHORT).show();
+                        Log.v(TAGLOG,"Servicio iniciado");
+                        if(MainActivity.comando != null) {
+                            MainActivity.comando.setText("Instruccion: " + mensaje + " Numero: " + numero);
+                        }
+
+                    } else if (mensaje.trim().substring(0,5).equalsIgnoreCase("nofix")) {
+
+                        db.eliminarTodo(SQLHelper.TABLA_AUTOTRACK);
+//                        ubicacion.disableLocationUpdates();
+
+                        contexto.stopService(intentServicio);
+
+                        Toast.makeText(contexto, "sin auto localizacion", Toast.LENGTH_SHORT).show();
+
+                        if( MainActivity.comando != null ){
+                            MainActivity.comando.setText("Sin instruccion de sutorrastreo");
+                        }
+                    }
+                } else {
+                    Log.d(Ext.TAGLOG, "denied");
+                }
             }
+
+        } catch (StringIndexOutOfBoundsException e) {
+            Toast.makeText(contexto, "Error: " + e.getMessage() +"\nRebice el comando", Toast.LENGTH_SHORT).show();
         }
 
     }
@@ -196,11 +274,11 @@ public class SMSReceiver extends BroadcastReceiver {
         String[] datosAutoTrack = new String[5];
         msn = msn.trim().replace(" ", "");
         try {
-            datosAutoTrack[0] = msn.substring(3, 6);
-            datosAutoTrack[1] = msn.substring(6, 7);
-            datosAutoTrack[2] = msn.substring(7, 10);
-            datosAutoTrack[3] = msn.substring(10, 11);
-            datosAutoTrack[4] = msn.substring(11);
+            datosAutoTrack[0] = msn.substring(3, 6);//tiempo
+            datosAutoTrack[1] = msn.substring(6, 7);//tipo
+            datosAutoTrack[2] = msn.substring(7, 10);//cantidad
+            datosAutoTrack[3] = msn.substring(10, 11);//corroboracion
+            datosAutoTrack[4] = msn.substring(11);//clave
 
             if (Integer.parseInt(datosAutoTrack[0]) < 030 && datosAutoTrack[1].equalsIgnoreCase("s"))
                 return null;

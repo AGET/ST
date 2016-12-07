@@ -28,6 +28,7 @@ public class SQLHelper extends SQLiteOpenHelper {
 //    fix030s005n123456
 //    nofix
     public static final String COLUMNA_COMANDO = "comando_autotrack";
+    public static final String COLUMNA_NUMERO = "numero";
 
 
     private static final String SQL_CREAR_TABLA_USUARIOS = "CREATE TABLE IF NOT EXISTS "
@@ -38,7 +39,8 @@ public class SQLHelper extends SQLiteOpenHelper {
     private static final String SQL_CREAR_TABLA_COMANDO = "CREATE TABLE IF NOT EXISTS "
             + TABLA_AUTOTRACK + " ("
             + COLUMNA_GENERICA_ID + " " + TIPO_DATO_INTEGER + " PRIMARY KEY AUTOINCREMENT, "
-            + COLUMNA_COMANDO + " " + TIPO_DATO_TEXT +" )";
+            + COLUMNA_COMANDO + " " + TIPO_DATO_TEXT +","
+            + COLUMNA_NUMERO + " " + TIPO_DATO_TEXT + " )";
 
     public SQLHelper(Context context) {
         super(context, DATABASE_NAME, null, DATABASE_VERSION);

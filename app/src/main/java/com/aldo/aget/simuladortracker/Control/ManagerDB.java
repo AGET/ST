@@ -9,6 +9,7 @@ import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
+import android.database.sqlite.SQLiteException;
 import android.util.Log;
 
 import java.util.ArrayList;
@@ -31,12 +32,11 @@ public class ManagerDB {
         Cursor c;
         c = db.query(tabla, columna, null, null, null, null, null);
 
-        Log.d(Ext.TAGLOG,"getColumnCount="+c.getColumnCount());
-        Log.d(Ext.TAGLOG,"getCount="+c.getCount());
+        Log.d(Ext.TAGLOG, "getColumnCount=" + c.getColumnCount());
+        Log.d(Ext.TAGLOG, "getCount=" + c.getCount());
 
         return c.getCount();
     }
-
 
 
     public boolean existe(String numero) {
@@ -44,12 +44,12 @@ public class ManagerDB {
 
         Cursor c;
         c = db.query(SQLHelper.TABLA_USUARIOS, new String[]{SQLHelper.COLUMNA_USUARIO_NUMERO},
-                SQLHelper.COLUMNA_USUARIO_NUMERO+"=?", new String[]{numero}, null, null, null);
+                SQLHelper.COLUMNA_USUARIO_NUMERO + "=?", new String[]{numero}, null, null, null);
 
 
-        Log.d(Ext.TAGLOG,"getColumnCount="+c.getColumnCount());
-        Log.d(Ext.TAGLOG,"getCount="+c.getCount());
-        Log.d(Ext.TAGLOG,"numero="+numero);
+        Log.d(Ext.TAGLOG, "getColumnCount=" + c.getColumnCount());
+        Log.d(Ext.TAGLOG, "getCount=" + c.getCount());
+        Log.d(Ext.TAGLOG, "numero=" + numero);
 
         return c.getCount() > 0;
     }
@@ -59,8 +59,8 @@ public class ManagerDB {
         Cursor c;
         c = db.query(SQLHelper.TABLA_AUTOTRACK, new String[]{SQLHelper.COLUMNA_COMANDO}, null, null, null, null, null);
 
-        Log.d(Ext.TAGLOG,"Autotrack getColumnCount="+c.getColumnCount());
-        Log.d(Ext.TAGLOG,"Autotrack getCount="+c.getCount());
+        Log.d(Ext.TAGLOG, "Autotrack getColumnCount=" + c.getColumnCount());
+        Log.d(Ext.TAGLOG, "Autotrack getCount=" + c.getCount());
 
         return c.getCount() > 0;
     }
@@ -98,15 +98,26 @@ public class ManagerDB {
         abrirEscrituraBD();
         ArrayList datosCursor = new ArrayList();
         Cursor c;
-        if (where != null) {
-            c = db.query(tabla, campos, where + "=?", datosWhere, null, null, null);
-        } else {
-            c = db.query(tabla, campos, null, null, null, null, null);
+        try {
+            if (where != null) {
+                c = db.query(tabla, campos, where + "=?", datosWhere, null, null, null);
+            } else {
+                c = db.query(tabla, campos, null, null, null, null, null);
+            }
+        } catch (SQLiteException e) {
+            Log.v(Ext.TAGLOG, "Error SQLite" + e.getMessage());
+            return null;
         }
         if (c.moveToFirst()) {
             do {
+//                Log.v(Ext.TAGLOG, "numero: " + c.getColumnCount());
+//                Log.v(Ext.TAGLOG, "otro numero: " + c.getCount());
+//                Log.v(Ext.TAGLOG, "numero de nombres: " + c.getColumnNames().length);
+//                Log.v(Ext.TAGLOG, "nombre1: " + c.getColumnNames()[0]);
+//                Log.v(Ext.TAGLOG, "nombre2: " + c.getColumnNames()[1]);
                 for (int i = 0; i < c.getColumnCount(); i++) {
                     datosCursor.add(c.getString(i));
+                    Log.v(Ext.TAGLOG, c.getColumnName(i) + ": " + c.getString(i));
                 }
             } while (c.moveToNext());
         } else {
@@ -126,6 +137,16 @@ public class ManagerDB {
             case SQLHelper.TABLA_AUTOTRACK:
                 nuevoRegistro.put(columna, datosColumnas);
                 break;
+        }
+        db.insert(tabla, null, nuevoRegistro);
+        cerrarBD();
+    }
+
+    public void insercionMultiple(String tabla, String columna[], String datosColumnas[]) {
+        abrirEscrituraBD();
+        ContentValues nuevoRegistro = new ContentValues();
+        for (int i = 0; i < columna.length; i++) {
+            nuevoRegistro.put(columna[i], datosColumnas[i]);
         }
         db.insert(tabla, null, nuevoRegistro);
         cerrarBD();

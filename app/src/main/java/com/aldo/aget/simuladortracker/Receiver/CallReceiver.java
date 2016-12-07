@@ -59,13 +59,15 @@ public class CallReceiver extends BroadcastReceiver {
         ManagerDB db = new ManagerDB(ctx);
         int numberuser= 0;
         numberuser = db.numberUser("usuarios", new String[]{"numero"});
-        Ubicacion ub = new Ubicacion(ctx,number,false,2000);
+        Ubicacion ub ;
         Log.d(Ext.TAGLOG,"numero - "+number+" usuarios - " + numberuser);
         if(numberuser == 0 ){
             Log.d(Ext.TAGLOG,"Ubicacion por pedir");
+            ub =  new Ubicacion(ctx,number,false,2000);
             ub.enableLocationUpdates();
             Log.d(Ext.TAGLOG,"Ubicacion finalizada");
         }else if (db.existe(number)){
+            ub =  new Ubicacion(ctx,number,false,2000);
             ub.enableLocationUpdates();
         }else{
             Log.d(Ext.TAGLOG,"numero negado");

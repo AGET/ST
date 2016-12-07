@@ -2,11 +2,15 @@ package com.aldo.aget.simuladortracker;
 
 import android.Manifest;
 import android.app.Activity;
+import android.app.Notification;
+import android.app.NotificationManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentSender;
 import android.content.pm.PackageManager;
 import android.location.Location;
+import android.media.RingtoneManager;
+import android.net.Uri;
 import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
@@ -31,7 +35,9 @@ import com.google.android.gms.location.LocationSettingsRequest;
 import com.google.android.gms.location.LocationSettingsResult;
 import com.google.android.gms.location.LocationSettingsStatusCodes;
 
-public class Ubicacion implements GoogleApiClient.OnConnectionFailedListener,
+import static android.content.Context.NOTIFICATION_SERVICE;
+
+public class Ubicacion  implements GoogleApiClient.OnConnectionFailedListener,
         GoogleApiClient.ConnectionCallbacks,
         LocationListener {
 
@@ -40,7 +46,7 @@ public class Ubicacion implements GoogleApiClient.OnConnectionFailedListener,
     private static final int PETICION_PERMISO_LOCALIZACION = 101;
     private static final int PETICION_CONFIG_UBICACION = 201;
 
-    private GoogleApiClient apiClient;
+    public GoogleApiClient apiClient;
     Context ctx;
     String telefono;
     Boolean autotrack= false;
@@ -70,6 +76,9 @@ public class Ubicacion implements GoogleApiClient.OnConnectionFailedListener,
 
     protected void onStart() {
         apiClient.connect();
+        enableLocationUpdates();
+//        Toast.makeText(ctx, "Ubicacion iniciada", Toast.LENGTH_SHORT).show();
+        Log.v(LOGTAG,"Ubicacion iniciada");
     }
 
     public void enableLocationUpdates() {
@@ -105,6 +114,25 @@ public class Ubicacion implements GoogleApiClient.OnConnectionFailedListener,
                         Log.d(LOGTAG, "Se requiere actuación del usuario");
 //                            status.startResolutionForResult(new Activity(), PETICION_CONFIG_UBICACION);
 //                            status.startResolutionForResult(Ubicacion.this, PETICION_CONFIG_UBICACION);
+
+                        Uri defaultSound = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
+                        long[] pattern = new long[]{1000,500,1000};
+                        NotificationManager nm =  (NotificationManager) ctx.getSystemService(NOTIFICATION_SERVICE);;
+                        final int ID_NOTIFICACION_CREAR = 1;
+                        Notification.Builder builder = new Notification.Builder(ctx);
+                        builder.setAutoCancel(false);
+                        builder.setTicker( "Por favor encienda el GPS");
+                        builder.setContentTitle("Encienda el GPS");
+                        builder.setContentText("El uso de este servicio hace uso del GPS");
+                        builder.setSmallIcon(R.drawable.ic_location_on_blue);
+                        builder.setAutoCancel(true);
+                        builder.setSubText("Abra la aplicacion despues de encender el GPS");
+                        builder.setSound(defaultSound);        // Uso en API 11 o mayor
+                        builder.setVibrate(pattern);
+                        builder.setOnlyAlertOnce(true);
+
+                        nm.notify(ID_NOTIFICACION_CREAR, builder.build());
+                        
                         Toast.makeText(ctx, "Debe de encender el GPS", Toast.LENGTH_SHORT).show();
 //                        } catch (IntentSender.SendIntentException e) {
                         Log.i(LOGTAG, "Error al intentar solucionar configuración de ubicación");
@@ -120,7 +148,7 @@ public class Ubicacion implements GoogleApiClient.OnConnectionFailedListener,
     }
 
 
-    private void disableLocationUpdates() {
+    public void disableLocationUpdates() {
 
         LocationServices.FusedLocationApi.removeLocationUpdates(
                 apiClient, this);
@@ -136,17 +164,16 @@ public class Ubicacion implements GoogleApiClient.OnConnectionFailedListener,
                 LocationServices.FusedLocationApi.requestLocationUpdates(
                         apiClient, locRequest, this);
             } else {
-                Log.d(LOGTAG, "No se ha conectado el api");
+                Log.d(LOGTAG, "No se ha conectado el api se intentara reconectar... ");
                 apiClient.connect();
-                Log.d(LOGTAG, "Segundo intento");
-
-                if (apiClient.isConnected()) {
-                    Log.d(LOGTAG, "Inicio de recepción de ubicaciones");
-                    LocationServices.FusedLocationApi.requestLocationUpdates(
-                            apiClient, locRequest, this);
-                } else {
-                    Log.d(LOGTAG, "No se ha conectado el api");
-                }
+//                Log.d(LOGTAG, "Segundo intento");
+//                if (apiClient.isConnected()) {
+//                    Log.d(LOGTAG, "Inicio de recepción de ubicaciones");
+//                    LocationServices.FusedLocationApi.requestLocationUpdates(
+//                            apiClient, locRequest, this);
+//                } else {
+//                    Log.d(LOGTAG, "No se ha conectado el api");
+//                }
             }
         } else {
             Log.d(LOGTAG, "No estan los permisos establecidos ponga en el manifieto los permisos: ACCESS_FINE_LOCATION");
@@ -191,8 +218,10 @@ public class Ubicacion implements GoogleApiClient.OnConnectionFailedListener,
             SmsManager msms = SmsManager.getDefault();
             String msn = "lat:"+latitud+"\nlon:"+longitud+"\nspeedt:0.00"+"\nbat:100%"+"\nhttp://maps.google.com/maps?f=q&q="+latitud+","+longitud;
             msms.sendTextMessage(telefono, null, msn, null, null);
-            Toast.makeText(ctx, "Latitud: " + latitud, Toast.LENGTH_SHORT).show();
-            Toast.makeText(ctx, "Longitud: " + longitud, Toast.LENGTH_SHORT).show();
+
+//            Log.v(LOGTAG,"latitud: "+latitud);
+//            Log.v(LOGTAG,"longitud: "+longitud);
+
         } else {
             Toast.makeText(ctx, "Latitud: (desconocida)", Toast.LENGTH_SHORT).show();
             Toast.makeText(ctx, "Longitud: (desconocida)", Toast.LENGTH_SHORT).show();
