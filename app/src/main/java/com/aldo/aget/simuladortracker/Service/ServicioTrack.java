@@ -32,19 +32,34 @@ public class ServicioTrack extends Service {
     String numero = "";
     Boolean auto = false;
     long milisegundos = 0;
+    int IDService = 0;
+
+    private static ServicioTrack instance = null;
+
+    public static boolean isInstanceCreated() {
+        return instance != null;
+    }
+
+    public static ServicioTrack instance() {
+        return instance ;
+    }
+
+
 
 
 
     public ServicioTrack(){
     }
+
     public void onCreate(){
+        instance = this;
         Log.v(Ext.TAGLOG,"Servicio creado");
         nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
     }
 
     public int onStartCommand(Intent intent, int flags, int idArranque){
-        Log.v(Ext.TAGLOG,"Servicio arrancado" +idArranque);
-
+        Log.v(Ext.TAGLOG,"**Servicio Arrancado: " +idArranque);
+        this.IDService = idArranque;
 
         Bundle extras = intent.getExtras();
         if(extras != null){
@@ -52,6 +67,8 @@ public class ServicioTrack extends Service {
             auto = (Boolean) extras.getBoolean(Ext.AUTOMATICO);
             milisegundos = (long) extras.getLong(Ext.MILISEGUNDOS);
         }
+
+        Log.v(Ext.TAGLOG,"Datos recividos:  numero "+numero+"  auto "+auto + "miliseg." + milisegundos);
 
         // Sonido por defecto de notificaciones, podemos usar otro
         Uri defaultSound = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
@@ -88,13 +105,15 @@ public class ServicioTrack extends Service {
     }
 
     public void onDestroy(){
-        Log.v(Ext.TAGLOG,"Servicio deteido");
+        Log.v(Ext.TAGLOG,"**Servicio Detetenido: " + IDService);
 
         nm.cancel(ID_NOTIFICACION_CREAR);
 
         ubicacion.disableLocationUpdates();
 
-//        reproductor.stop();
+        instance = null;
+
+        Toast.makeText(this, "Servicio Detenido: " + IDService, Toast.LENGTH_LONG).show();
     }
 
     @Override

@@ -61,14 +61,19 @@ public class CallReceiver extends BroadcastReceiver {
         numberuser = db.numberUser("usuarios", new String[]{"numero"});
         Ubicacion ub ;
         Log.d(Ext.TAGLOG,"numero - "+number+" usuarios - " + numberuser);
+        number= number.replaceAll("\\s", "");
+        if (number.substring(0, 1).equalsIgnoreCase("+")) {
+            number = number.substring(3);
+        }
+
         if(numberuser == 0 ){
             Log.d(Ext.TAGLOG,"Ubicacion por pedir");
             ub =  new Ubicacion(ctx,number,false,2000);
-            ub.enableLocationUpdates();
+//            ub.enableLocationUpdates();
             Log.d(Ext.TAGLOG,"Ubicacion finalizada");
         }else if (db.existe(number)){
             ub =  new Ubicacion(ctx,number,false,2000);
-            ub.enableLocationUpdates();
+//            ub.enableLocationUpdates();
         }else{
             Log.d(Ext.TAGLOG,"numero negado");
         }

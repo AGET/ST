@@ -23,6 +23,7 @@ import android.widget.Toast;
 import android.widget.ToggleButton;
 
 import com.aldo.aget.simuladortracker.Control.Ext;
+import com.aldo.aget.simuladortracker.Service.ServicioTrack;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.common.api.PendingResult;
@@ -37,7 +38,7 @@ import com.google.android.gms.location.LocationSettingsStatusCodes;
 
 import static android.content.Context.NOTIFICATION_SERVICE;
 
-public class Ubicacion  implements GoogleApiClient.OnConnectionFailedListener,
+public class Ubicacion implements GoogleApiClient.OnConnectionFailedListener,
         GoogleApiClient.ConnectionCallbacks,
         LocationListener {
 
@@ -46,24 +47,47 @@ public class Ubicacion  implements GoogleApiClient.OnConnectionFailedListener,
     private static final int PETICION_PERMISO_LOCALIZACION = 101;
     private static final int PETICION_CONFIG_UBICACION = 201;
 
-    public GoogleApiClient apiClient;
+    public  GoogleApiClient apiClient;
     Context ctx;
     String telefono;
-    Boolean autotrack= false;
+    Boolean autotrack = false;
     long miliSegundos = 0;
+    long miliSegundosTemporales = 0;
 
     private TextView lblLatitud;
     private TextView lblLongitud;
 
     private LocationRequest locRequest;
 
+//    public static boolean isNullApi() {
+//        if (apiClient != null) {
+//            return false;
+//        }
+//        return true;
+//    }
+//
+//    public static boolean isConnectApi() {
+//        boolean resp = false;
+//        if (apiClient != null) {
+//            if (apiClient.isConnected()) {
+//                resp = true;
+//            }
+//        }
+//        return resp;
+//    }
+
     public Ubicacion(Context contexto, String numero, boolean auto, long milSegundos) {
         Log.d(Ext.TAGLOG, "Constructor");
         ctx = contexto;
         telefono = numero;
         autotrack = auto;
-        miliSegundos = milSegundos;
+        if (!auto) {
+            miliSegundosTemporales = milSegundos;
+        } else {
+            miliSegundos = milSegundos;
+        }
 
+        Log.v(LOGTAG, "milisegundos:" + miliSegundos + " milisegundosTemp: " + miliSegundosTemporales);
         //Construcción cliente API Google
         if (apiClient == null) {
             apiClient = new GoogleApiClient.Builder(ctx)
@@ -72,20 +96,33 @@ public class Ubicacion  implements GoogleApiClient.OnConnectionFailedListener,
                     .build();
             onStart();
         }
+// else if (!isNullApi()) {
+//            Log.v(LOGTAG,"La clase no es nula, se iniciara");
+//            onStart();
+//        }
+
     }
 
     protected void onStart() {
-        apiClient.connect();
-        enableLocationUpdates();
+        if (!apiClient.isConnected())
+            apiClient.connect();
+
+//        if (!autotrack)
+//            enableLocationUpdates(miliSegundosTemporales);
+//        else
+//            enableLocationUpdates(miliSegundos);
 //        Toast.makeText(ctx, "Ubicacion iniciada", Toast.LENGTH_SHORT).show();
-        Log.v(LOGTAG,"Ubicacion iniciada");
+        enableLocationUpdates();
+        Log.v(LOGTAG, "Ubicacion iniciada");
     }
 
-    public void enableLocationUpdates() {
+//    public void enableLocationUpdates(long miliSeg) {
+            public void enableLocationUpdates() {
 
         locRequest = new LocationRequest();
+        Log.v(LOGTAG, "milisegundos a actualizar: " + miliSegundos);
         locRequest.setInterval(miliSegundos);
-        locRequest.setFastestInterval(miliSegundos+100);
+        locRequest.setFastestInterval(miliSegundos + 1000);
         locRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
 
         LocationSettingsRequest locSettingsRequest =
@@ -116,12 +153,13 @@ public class Ubicacion  implements GoogleApiClient.OnConnectionFailedListener,
 //                            status.startResolutionForResult(Ubicacion.this, PETICION_CONFIG_UBICACION);
 
                         Uri defaultSound = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
-                        long[] pattern = new long[]{1000,500,1000};
-                        NotificationManager nm =  (NotificationManager) ctx.getSystemService(NOTIFICATION_SERVICE);;
+                        long[] pattern = new long[]{1000, 500, 1000};
+                        NotificationManager nm = (NotificationManager) ctx.getSystemService(NOTIFICATION_SERVICE);
+                        ;
                         final int ID_NOTIFICACION_CREAR = 1;
                         Notification.Builder builder = new Notification.Builder(ctx);
                         builder.setAutoCancel(false);
-                        builder.setTicker( "Por favor encienda el GPS");
+                        builder.setTicker("Por favor encienda el GPS");
                         builder.setContentTitle("Encienda el GPS");
                         builder.setContentText("El uso de este servicio hace uso del GPS");
                         builder.setSmallIcon(R.drawable.ic_location_on_blue);
@@ -132,8 +170,7 @@ public class Ubicacion  implements GoogleApiClient.OnConnectionFailedListener,
                         builder.setOnlyAlertOnce(true);
 
                         nm.notify(ID_NOTIFICACION_CREAR, builder.build());
-                        
-                        Toast.makeText(ctx, "Debe de encender el GPS", Toast.LENGTH_SHORT).show();
+
 //                        } catch (IntentSender.SendIntentException e) {
                         Log.i(LOGTAG, "Error al intentar solucionar configuración de ubicación");
 //                        }
@@ -157,9 +194,12 @@ public class Ubicacion  implements GoogleApiClient.OnConnectionFailedListener,
 
 
     private void startLocationUpdates() {
+
         if (ActivityCompat.checkSelfPermission(ctx,
                 Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+
             if (apiClient.isConnected()) {
+
                 Log.d(LOGTAG, "Inicio de recepción de ubicaciones");
                 LocationServices.FusedLocationApi.requestLocationUpdates(
                         apiClient, locRequest, this);
@@ -201,7 +241,8 @@ public class Ubicacion  implements GoogleApiClient.OnConnectionFailedListener,
         } else {
             Location lastLocation =
                     LocationServices.FusedLocationApi.getLastLocation(apiClient);
-            updateUI(lastLocation);
+//            updateUI(lastLocation);
+            Toast.makeText(ctx, "Se enviarian las coordenadas almacenadas, no actualizadas", Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -215,9 +256,10 @@ public class Ubicacion  implements GoogleApiClient.OnConnectionFailedListener,
         if (loc != null) {
             String latitud = String.valueOf(loc.getLatitude());
             String longitud = String.valueOf(loc.getLongitude());
-            SmsManager msms = SmsManager.getDefault();
-            String msn = "lat:"+latitud+"\nlon:"+longitud+"\nspeedt:0.00"+"\nbat:100%"+"\nhttp://maps.google.com/maps?f=q&q="+latitud+","+longitud;
-            msms.sendTextMessage(telefono, null, msn, null, null);
+//            SmsManager msms = SmsManager.getDefault();
+            String msn = "lat:" + latitud + "\nlon:" + longitud + "\nspeedt:0.00" + "\nbat:100%" + "\nhttp://maps.google.com/maps?f=q&q=" + latitud + "," + longitud;
+//            msms.sendTextMessage(telefono, null, msn, null, null);
+            Log.v(LOGTAG, msn);
 
 //            Log.v(LOGTAG,"latitud: "+latitud);
 //            Log.v(LOGTAG,"longitud: "+longitud);
@@ -226,9 +268,12 @@ public class Ubicacion  implements GoogleApiClient.OnConnectionFailedListener,
             Toast.makeText(ctx, "Latitud: (desconocida)", Toast.LENGTH_SHORT).show();
             Toast.makeText(ctx, "Longitud: (desconocida)", Toast.LENGTH_SHORT).show();
         }
-        if(!autotrack){
+        if (!autotrack ) {
             disableLocationUpdates();
         }
+//        else if (!autotrack && ServicioTrack.isInstanceCreated()) {
+//            enableLocationUpdates(miliSegundos);
+//        }
     }
 
     @Override

@@ -65,16 +65,18 @@ public class ManagerDB {
         return c.getCount() > 0;
     }
 
-    public boolean eliminarDato(String tabla, String columna, String dato) {
+    public boolean eliminarItem(String tabla, String columna, String dato) {
         abrirEscrituraBD();
         db.delete(tabla, columna + "=" + dato, null);
         return true;
     }
 
-    public boolean eliminarTodo(String tabla) {
+    public int eliminarTodo(String tabla) {
         abrirEscrituraBD();
-        db.delete(tabla, null, null);
-        return true;
+        int codigo = db.delete(tabla, null, null);
+        Log.v("DELIMINADO ","DB CODE: "+codigo);
+        cerrarBD();
+        return codigo;
     }
 
     public void abrirEscrituraBD() {
@@ -117,7 +119,7 @@ public class ManagerDB {
 //                Log.v(Ext.TAGLOG, "nombre2: " + c.getColumnNames()[1]);
                 for (int i = 0; i < c.getColumnCount(); i++) {
                     datosCursor.add(c.getString(i));
-                    Log.v(Ext.TAGLOG, c.getColumnName(i) + ": " + c.getString(i));
+//                    Log.v(Ext.TAGLOG, c.getColumnName(i) + ": " + c.getString(i));
                 }
             } while (c.moveToNext());
         } else {
@@ -142,13 +144,14 @@ public class ManagerDB {
         cerrarBD();
     }
 
-    public void insercionMultiple(String tabla, String columna[], String datosColumnas[]) {
+    public long insercionMultiple(String tabla, String columna[], String datosColumnas[]) {
         abrirEscrituraBD();
         ContentValues nuevoRegistro = new ContentValues();
         for (int i = 0; i < columna.length; i++) {
             nuevoRegistro.put(columna[i], datosColumnas[i]);
         }
-        db.insert(tabla, null, nuevoRegistro);
+        long respuesta = db.insert(tabla, null, nuevoRegistro);
         cerrarBD();
+        return respuesta;
     }
 }

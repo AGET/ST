@@ -40,55 +40,70 @@ public class MainActivity extends AppCompatActivity {
 
         command = db.obtenerDatos(SQLHelper.TABLA_AUTOTRACK, new String[]{SQLHelper.COLUMNA_COMANDO, SQLHelper.COLUMNA_NUMERO}, null, null);
 
-        if (command != null ) {
+        Log.v(Ext.TAGLOG, "SERVICIO CREADO: " + ServicioTrack.isInstanceCreated());
+//        Log.v(Ext.TAGLOG, "Google conectado: " + Ubicacion.isConnectApi());
+//        Log.v(Ext.TAGLOG, "Clase que contiene Google nulo: " + Ubicacion.isNullApi());
+        Intent intent = new Intent(this, ServicioTrack.class);
 
-            Log.v(Ext.TAGLOG,"Comando:"+command.get(0).toString());
-            Log.v(Ext.TAGLOG,"Numero:"+command.get(1).toString());
-            long milisegundos = 0;
-            comando.setText("" + command.get(0));
+//        if (!ServicioTrack.isInstanceCreated() && Ubicacion.isConnectApi()) {
+//            Ubicacion.apiClient.disconnect();
+//        }
 
-            String[] dataAutoTrack = obtenerDatosAutotrack(command.get(0).toString());
+        if (command != null) {
 
-            if (dataAutoTrack != null) {
+            if (!ServicioTrack.isInstanceCreated()) {
 
-                int numeroDeUbicacion = Integer.parseInt(dataAutoTrack[2]);
-                int tipoTiempo = 0;
+                Log.v(Ext.TAGLOG, "Comando:" + command.get(0).toString());
+                Log.v(Ext.TAGLOG, "NumeroTAG:" + command.get(1).toString());
+                long milisegundos = 0;
+//                comando.setText("" + command.get(0));
 
-                switch (dataAutoTrack[1]) {
-                    case "s":
-                        tipoTiempo = Integer.parseInt(dataAutoTrack[0]);
-                        milisegundos = (tipoTiempo / numeroDeUbicacion) * 1000;
-                        break;
-                    case "m":
-                        tipoTiempo = Integer.parseInt(dataAutoTrack[0]);
-                        milisegundos = ((tipoTiempo * 60) / numeroDeUbicacion) * 1000;
-                        break;
-                    case "h":
-                        tipoTiempo = Integer.parseInt(dataAutoTrack[0]);
-                        milisegundos = ((tipoTiempo * 3600) / numeroDeUbicacion) * 1000;
-                        break;
+                String[] dataAutoTrack = obtenerDatosAutotrack(command.get(0).toString());
+
+                if (dataAutoTrack != null) {
+
+                    int numeroDeUbicacion = Integer.parseInt(dataAutoTrack[2]);
+                    int tipoTiempo = 0;
+
+                    switch (dataAutoTrack[1]) {
+                        case "s":
+                            tipoTiempo = Integer.parseInt(dataAutoTrack[0]);
+                            milisegundos = (tipoTiempo / numeroDeUbicacion) * 1000;
+                            break;
+                        case "m":
+                            tipoTiempo = Integer.parseInt(dataAutoTrack[0]);
+                            milisegundos = ((tipoTiempo * 60) / numeroDeUbicacion) * 1000;
+                            break;
+                        case "h":
+                            tipoTiempo = Integer.parseInt(dataAutoTrack[0]);
+                            milisegundos = ((tipoTiempo * 3600) / numeroDeUbicacion) * 1000;
+                            break;
+                    }
+
+                    intent.putExtra(Ext.NUMERO, command.get(1).toString());
+                    intent.putExtra(Ext.AUTOMATICO, true);
+                    intent.putExtra(Ext.MILISEGUNDOS, milisegundos);
+
+                    if (!ServicioTrack.isInstanceCreated()) {
+                        startService(intent);
+                    }
                 }
-
-                Intent intent = new Intent(this, ServicioTrack.class);
-                intent.putExtra(Ext.NUMERO, command.get(1).toString());
-                intent.putExtra(Ext.AUTOMATICO, true);
-                intent.putExtra(Ext.MILISEGUNDOS, milisegundos);
-                startService(intent);
-
-
-//                        ubicacion = new Ubicacion(contexto, numero, true, milisegundos);
 
                 Log.v("AGET", "se establecio el servicio");
                 Toast.makeText(this, "auto localizacion establecida", Toast.LENGTH_SHORT).show();
 
-                if (MainActivity.comando != null) {
-                    MainActivity.comando.setText("Instruccion: " + command.get(0) + " Numero: " + command.get(1));
-                }
-
-            } else {
-                Toast.makeText(this, "problema con el comando, verifique que sea superior " +
-                        "a 30 seg.", Toast.LENGTH_SHORT).show();
             }
+
+            if (comando != null) {
+                comando.setText("Instruccion: " + command.get(0) + " Numero: " + command.get(1));
+            }
+
+        } else if (command == null && ServicioTrack.isInstanceCreated()) {
+            stopService(intent);
+//            if (Ubicacion.isConnectApi()) {
+//                Ubicacion.apiClient.disconnect();
+//            }
+            comando.setText("No hay instruccion de autorrastreo");
         } else {
             comando.setText("No hay instruccion de autorrastreo");
             if (SMSReceiver.ubicacion != null) {
