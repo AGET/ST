@@ -6,11 +6,13 @@ import android.app.Notification;
 import android.app.NotificationManager;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.IntentSender;
 import android.content.pm.PackageManager;
 import android.location.Location;
 import android.media.RingtoneManager;
 import android.net.Uri;
+import android.os.BatteryManager;
 import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
@@ -47,7 +49,7 @@ public class Ubicacion implements GoogleApiClient.OnConnectionFailedListener,
     private static final int PETICION_PERMISO_LOCALIZACION = 101;
     private static final int PETICION_CONFIG_UBICACION = 201;
 
-    public  GoogleApiClient apiClient;
+    public GoogleApiClient apiClient;
     Context ctx;
     String telefono;
     Boolean autotrack = false;
@@ -116,8 +118,8 @@ public class Ubicacion implements GoogleApiClient.OnConnectionFailedListener,
         Log.v(LOGTAG, "Ubicacion iniciada");
     }
 
-//    public void enableLocationUpdates(long miliSeg) {
-            public void enableLocationUpdates() {
+    //    public void enableLocationUpdates(long miliSeg) {
+    public void enableLocationUpdates() {
 
         locRequest = new LocationRequest();
         Log.v(LOGTAG, "milisegundos a actualizar: " + miliSegundos);
@@ -254,11 +256,13 @@ public class Ubicacion implements GoogleApiClient.OnConnectionFailedListener,
 
     private void updateUI(Location loc) {
         if (loc != null) {
+
             String latitud = String.valueOf(loc.getLatitude());
             String longitud = String.valueOf(loc.getLongitude());
-//            SmsManager msms = SmsManager.getDefault();
-            String msn = "lat:" + latitud + "\nlon:" + longitud + "\nspeedt:0.00" + "\nbat:100%" + "\nhttp://maps.google.com/maps?f=q&q=" + latitud + "," + longitud;
-//            msms.sendTextMessage(telefono, null, msn, null, null);
+            float speed = loc.getSpeed();
+            SmsManager sms = SmsManager.getDefault();
+            String msn = "lat:" + latitud + "\nlon:" + longitud + "\nspeed:"+speed + "\nbat:"+cargaBateria()+"%" + "\nhttp://maps.google.com/maps?f=q&q=" + latitud + "," + longitud;
+            sms.sendTextMessage(telefono, null, msn, null, null);
             Log.v(LOGTAG, msn);
 
 //            Log.v(LOGTAG,"latitud: "+latitud);
@@ -268,7 +272,7 @@ public class Ubicacion implements GoogleApiClient.OnConnectionFailedListener,
             Toast.makeText(ctx, "Latitud: (desconocida)", Toast.LENGTH_SHORT).show();
             Toast.makeText(ctx, "Longitud: (desconocida)", Toast.LENGTH_SHORT).show();
         }
-        if (!autotrack ) {
+        if (!autotrack) {
             disableLocationUpdates();
         }
 //        else if (!autotrack && ServicioTrack.isInstanceCreated()) {
@@ -281,5 +285,18 @@ public class Ubicacion implements GoogleApiClient.OnConnectionFailedListener,
         Log.d(LOGTAG, "Recibida nueva ubicación!");
         //Mostramos la nueva ubicación recibida
         updateUI(location);
+    }
+
+    public int cargaBateria() {
+        try {
+            IntentFilter batIntentFilter =
+                    new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
+            Intent battery = ctx.registerReceiver(null, batIntentFilter);
+            int nivelBateria = battery.getIntExtra(BatteryManager.EXTRA_LEVEL, -1);
+            return nivelBateria;
+        } catch (Exception e) {
+            Toast.makeText(ctx, "Error al obtener estado de la batería", Toast.LENGTH_SHORT).show();
+            return 0;
+        }
     }
 }

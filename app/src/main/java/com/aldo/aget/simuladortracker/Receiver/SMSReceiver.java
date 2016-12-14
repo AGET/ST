@@ -93,12 +93,11 @@ public class SMSReceiver extends BroadcastReceiver {
     private void parse() {
 
         intentServicio = new Intent(contexto, ServicioTrack.class);
-        Log.d(TAGLOG, "URGE VER: " + numero);
+
         numero = numero.replaceAll("\\s", "");
         if (numero.substring(0, 1).equalsIgnoreCase("+")) {
             numero = numero.substring(3);
         }
-        Log.d(TAGLOG, "URGE VER: " + numero);
 
         ManagerDB db = new ManagerDB(contexto);
 
